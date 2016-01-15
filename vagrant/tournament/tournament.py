@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# 
+#
 # tournament.py -- implementation of a Swiss-system tournament
 #
 
@@ -13,14 +13,30 @@ def connect():
 
 def deleteMatches():
     """Remove all the match records from the database."""
+    conn = connect()
+    c = conn.cursor()
+    c.execute("DELETE FROM Matches;")
+    conn.commit()
+    conn.close()
 
 
 def deletePlayers():
     """Remove all the player records from the database."""
+    conn = connect()
+    c = conn.cursor()
+    c.execute("DELETE FROM Players;")
+    conn.commit()
+    conn.close()
 
 
 def countPlayers():
     """Returns the number of players currently registered."""
+    conn = connect()
+    c = conn.cursor()
+    c.execute("SELECT COUNT(id) FROM Players;")
+    results = c.fetchall()
+    conn.close()
+    return results[0][0]
 
 
 def registerPlayer(name):
@@ -32,6 +48,11 @@ def registerPlayer(name):
     Args:
       name: the player's full name (need not be unique).
     """
+    conn = connect()
+    c = conn.cursor()
+    c.execute("INSERT INTO Players (name) VALUES (%s)", (name,))
+    conn.commit()
+    conn.close()
 
 
 def playerStandings():
@@ -47,17 +68,33 @@ def playerStandings():
         wins: the number of matches the player has won
         matches: the number of matches the player has played
     """
+    conn = connect()
+    c = conn.cursor()
+    c.execute("SELECT id, name, wins, matches FROM Standings ORDER BY wins DESC;")
+    results = c.fetchall()
+    conn.close()
+    return results
 
 
-def reportMatch(winner, loser):
+def reportMatch(winner, loser, tie):
     """Records the outcome of a single match between two players.
 
     Args:
       winner:  the id number of the player who won
       loser:  the id number of the player who lost
     """
- 
- 
+    conn = connect()
+    c = conn.cursor()
+    if tie:
+        c.execute("INSERT INTO Matches (player1, player2, result) VALUES (%s, %s, 1)", (winner, loser))
+        c.execute("INSERT INTO Matches (player1, player2, result) VALUES (%s, %s, 1)", (loser, winner))
+    else:
+        c.execute("INSERT INTO Matches (player1, player2, result) VALUES (%s, %s, 1)", (winner, loser))
+        c.execute("INSERT INTO Matches (player1, player2, result) VALUES (%s, %s, 0)", (loser, winner))
+    conn.commit()
+    conn.close()
+
+
 def swissPairings():
     """Returns a list of pairs of players for the next round of a match.
   
@@ -73,5 +110,18 @@ def swissPairings():
         id2: the second player's unique id
         name2: the second player's name
     """
-
-
+    conn = connect()
+    c = conn.cursor()
+    c.execute("SELECT id, name, wins FROM Standings ORDER BY wins DESC;")
+    results = c.fetchall()
+    conn.close()
+    i = 0
+    pairings = []
+    while i < len(results):
+        player1_id = results[i][0]
+        player1_name = results[i][1]
+        player2_id = results[i+1][0]
+        player2_name = results[i+1][1]
+        pairings.append((player1_id, player1_name, player2_id, player2_name))
+        i = i + 2
+    return pairings
